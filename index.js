@@ -1,10 +1,7 @@
 const fs = require('fs');
 const puppeteer = require('puppeteer');
 
-
 const DEBUG_MODE = true;
-
-
 
 async function main() {
   try {
@@ -41,29 +38,29 @@ async function main() {
     
     console.log("TOC page completed.");
 
-    // Scrape the current page
-    console.log("Scraping first offenders page");
-    let currentPageOffendersData = await extractOffenderDataFromPage(page);
+    let numberOfPagesScraped = 0;
 
-    // Add new data to database
-    offendersDatabase = Object.assign(offendersDatabase, currentPageOffendersData);
+    do {
+        console.log("Scraping Offenders Page: " + numberOfPagesScraped);
+        let currentPageOffendersData = await extractOffenderDataFromPage(page);
 
-    // Click "next" button
-    await navigateToNextoffenderPage(page);
+        // Add new data to database
+        offendersDatabase = Object.assign(offendersDatabase, currentPageOffendersData);
+        numberOfPagesScraped += 1;
 
-    currentPageOffendersData = await extractOffenderDataFromPage(page);
-    await navigateToNextoffenderPage(page);
+    } while (await navigateToNextoffenderPage(page));
 
-    offendersDatabase = Object.assign(offendersDatabase, currentPageOffendersData);
+    console.log("Scraping Completed. " + numberOfPagesScraped + " Pages Scraped");
 
-    console.log(offendersDatabase);    
-    console.log("Scraping completed");
-
+    // Save scraped data as file
     let serializedOffendersDatabase = JSON.stringify(offendersDatabase);
     fs.writeFileSync('./offenders_database.json', serializedOffendersDatabase);
 
 
-    //await browser.close();
+    if (DEBUG_MODE) {
+        await browser.close();
+    }
+
   } catch (e) {
       console.log(e);
   }
