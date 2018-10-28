@@ -62,6 +62,25 @@ const puppeteer = require('puppeteer');
 
     console.log(currentPageOffendersData);
 
+    // Click "next" button
+
+    let nextButtonImageHandle =  await page.$('img[src="images/button_next.jpg"]');
+    console.log("nextButtonImageHandle");
+    console.log(nextButtonImageHandle);
+
+    let nextButtonHandle = await nextButtonImageHandle.getProperty('parentElement');
+    console.log("nextButtonHandle");
+    console.log(nextButtonHandle);
+
+    await Promise.all([
+        page.waitForNavigation({waitUntil: 'networkidle0'}),
+        await nextButtonHandle.click()
+      ]);
+
+
+
+    //document.querySelector('img[src="images/button_next.jpg"]').parentElement
+
     //await browser.close();
   } catch (e) {
       console.log(e);
