@@ -1,14 +1,32 @@
+const fs = require('fs');
 const puppeteer = require('puppeteer');
 
-(async () => {
+
+const DEBUG_MODE = true;
+
+
+
+async function main() {
   try {
     //const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
 
-    const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: false,
-        slowMo: 250 // slow down by 250ms
-      });
+    let broswer;
+
+    if (DEBUG_MODE) {
+        browser = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            headless: false,
+            slowMo: 250 // slow down by 250ms
+          });
+    } else {
+        browser = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            headless: true,
+            slowMo: 0
+          });
+    }
+
+    let offendersDatabase = {};
 
     const page = await browser.newPage();
     await page.goto('http://www.icrimewatch.net/results.php?SubmitAllSearch=1&AgencyID=54473');
@@ -23,6 +41,52 @@ const puppeteer = require('puppeteer');
     
     console.log("TOC page completed.");
 
+    // Scrape the current page
+    console.log("Scraping first offenders page");
+    let currentPageOffendersData = await extractOffenderDataFromPage(page);
+
+    // Add new data to database
+    offendersDatabase = Object.assign(offendersDatabase, currentPageOffendersData);
+
+    // Click "next" button
+    await navigateToNextoffenderPage(page);
+
+    currentPageOffendersData = await extractOffenderDataFromPage(page);
+    await navigateToNextoffenderPage(page);
+
+    offendersDatabase = Object.assign(offendersDatabase, currentPageOffendersData);
+
+    console.log(offendersDatabase);    
+    console.log("Scraping completed");
+
+    let serializedOffendersDatabase = JSON.stringify(offendersDatabase);
+    fs.writeFileSync('./offenders_database.json', serializedOffendersDatabase);
+
+
+    //await browser.close();
+  } catch (e) {
+      console.log(e);
+  }
+
+};
+
+async function navigateToNextoffenderPage(page) {
+    // Click "next" button
+    let nextButtonImageHandle =  await page.$('img[src="images/button_next.jpg"]');
+    if (nextButtonImageHandle !== null) {
+        let nextButtonHandle = await nextButtonImageHandle.getProperty('parentElement');
+
+        await Promise.all([
+            page.waitForNavigation({waitUntil: 'networkidle0'}),
+            nextButtonHandle.click()
+        ]);
+
+        return true;
+    }
+    return false;
+}
+
+async function extractOffenderDataFromPage(page) {
     // Extract data
     let currentPageOffendersData = await page.evaluate(() => {
 
@@ -55,35 +119,13 @@ const puppeteer = require('puppeteer');
                 'photoURL': photoURL
             };
 
-            console.log(name);
+            console.log(offendersData);
         }
         return (offendersData);
     });
 
-    console.log(currentPageOffendersData);
-
-    // Click "next" button
-
-    let nextButtonImageHandle =  await page.$('img[src="images/button_next.jpg"]');
-    console.log("nextButtonImageHandle");
-    console.log(nextButtonImageHandle);
-
-    let nextButtonHandle = await nextButtonImageHandle.getProperty('parentElement');
-    console.log("nextButtonHandle");
-    console.log(nextButtonHandle);
-
-    await Promise.all([
-        page.waitForNavigation({waitUntil: 'networkidle0'}),
-        await nextButtonHandle.click()
-      ]);
+    return currentPageOffendersData;
+}
 
 
-
-    //document.querySelector('img[src="images/button_next.jpg"]').parentElement
-
-    //await browser.close();
-  } catch (e) {
-      console.log(e);
-  }
-
-})();
+main();
