@@ -1,7 +1,8 @@
 const fs = require('fs');
 const puppeteer = require('puppeteer');
 
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
+const DEBUG_MODE_SLOW_MO = 25;
 
 async function main() {
   try {
@@ -13,7 +14,7 @@ async function main() {
         browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: false,
-            slowMo: 250 // slow down by 250ms
+            slowMo: DEBUG_MODE_SLOW_MO
           });
     } else {
         browser = await puppeteer.launch({
@@ -32,7 +33,7 @@ async function main() {
     await page.click('input#agree'); // Checkbox "agree"
 
     await Promise.all([
-        page.waitForNavigation({waitUntil: 'networkidle0'}),
+        page.waitForNavigation({waitUntil: 'load'}),
         page.click('input#continue')
       ]);
     
@@ -74,7 +75,7 @@ async function navigateToNextoffenderPage(page) {
         let nextButtonHandle = await nextButtonImageHandle.getProperty('parentElement');
 
         await Promise.all([
-            page.waitForNavigation({waitUntil: 'networkidle0'}),
+            page.waitForNavigation({waitUntil: 'load'}),
             nextButtonHandle.click()
         ]);
 
